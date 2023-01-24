@@ -21,7 +21,7 @@ def ks_key(X):
     '''
     X = np.asarray(X)
 
-    # Coefficients from Kumhansl and Schmuckler
+    # Coefficients from Krumhansl and Schmuckler
     # as reported here: http://rnhart.net/articles/key-finding/
     major = np.asarray([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
 

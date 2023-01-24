@@ -5,9 +5,8 @@
 ## To re-plot data from the paper: (nothing needs to be done prior)
 Simply go to the notebook [3. Main Plotting.ipynb](3.%20Main%20Plotting.ipynb) in the root folder and run it. 
 
-## BUT, if you want to re-run the entire data processing from the start:
-NOTE: every one of the following steps can be skipped. 
-1. Run [0. Preprocess Raw Data.ipynb](0.%20Preprocess%20Raw%20Data.ipynb) in the root folder and run it to perform pre-processing of the data.
+## BUT, if you want to re-run the entire data processing from the start: 
+1. Run [0. Preprocess Raw Data.ipynb](0.%20Preprocess%20Raw%20Data.ipynb) in the root folder and run it to download the raw data and perform pre-processing of the data.
 2. Run [1. Data Exclusion.ipynb](1.%20Data%20Exclusion.ipynb) in the root folder and run it to see and re-apply the data exclusion criteria.
 
 ## To view some of the studies' meta-data (e.g., number of participants, button-press distributions, etc.):

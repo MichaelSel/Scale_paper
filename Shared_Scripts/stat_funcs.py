@@ -1,6 +1,10 @@
 # Set of functions for statistics. Main function to perform permutation tests for various statistical comparisons
 from statistics import stdev
+
+import pandas as pd
 from numpy import std, mean, sqrt
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import r2_score
 from statsmodels.stats.anova import AnovaRM
 import numpy as np
 from scipy import stats
@@ -65,6 +69,65 @@ def permtest_ANOVA_paired(data_panda, behavMeasure, reps):
 
     return obs_stat, prob
 
+def permtest_coeffs(X_vars,y_vars,coefficients,dataset, n_iter = 10000, plot=False):
+
+    if len(X_vars) == 1:
+        B = coefficients
+    else:
+        B = coefficients.array
+
+    X = dataset[X_vars].astype(float)
+    y = dataset[y_vars].to_numpy()
+
+    # reshape if single feature
+    if len(X_vars) == 1:
+        X = X.to_numpy()
+        X = X.reshape(-1, 1)
+
+    coefs = pd.DataFrame(
+        B,
+        columns=["Coefficient importance"],
+        index=X_vars,
+    )
+    alist = [[] for _ in range(len(X_vars))]
+    measures_null = np.empty(len(X_vars), object)
+    measures_null[:] = alist
+    y_rand = y
+    for it in range(n_iter):
+        np.random.shuffle(y_rand)
+        # splitting the data
+        # x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        # create an object of LinearRegression class
+        LR = LinearRegression()
+        # fit training data
+        LR.fit(X, y)
+        # predict on test data
+        y_prediction = LR.predict(X)
+        # predict the accuracy score (r2)
+        score = r2_score(y, y_prediction)
+        # get model coefficients
+        rand_coefficients = LR.coef_ * X.std(axis=0)
+        # save null values
+        for ii, var in enumerate(X_vars):
+            if len(X_vars) == 1:
+                measures_null[ii].append(rand_coefficients)
+            else:
+                measures_null[ii].append(eval("rand_coefficients." + var))
+
+    # Two-sided permutation test
+    if(plot):
+        _ = plt.hist(np.abs(measures_null[0]), bins='auto')
+        plt.show()
+    P_Vals = []
+    for ii, var in enumerate(X_vars):
+        if len(X_vars) == 1:
+            P_Vals.append(np.mean(np.abs(measures_null[ii]) > np.abs(B), axis=0))
+        else:
+            P_Vals.append(np.mean(np.abs(measures_null[ii]) > np.abs(eval("coefficients." + var)), axis=0))
+    # store p-values
+    coefs['vars'] = X_vars
+    coefs = pd.DataFrame(data={'vars': X_vars, "Coefficient importance": coefficients})
+    return coefs
 
 # function to run permutation test for a pearson correlation
 def perm_t_test_unpaired(X, Y, reps):
@@ -402,3 +465,74 @@ def prime_factor(value):
 
 def perm_bias_unpaired_unpack(args):
     return perm_bias_unpaired(*args)
+
+
+def bootstrap_ci(X_vars, y_vars, dataset, upper=97.5, lower=2.5):
+    X = dataset[X_vars].astype(float)
+    y = dataset[y_vars].to_numpy()
+
+    # reshape if single feature
+    if len(X_vars) == 1:
+        X = X.to_numpy()
+        X = X.reshape(-1, 1)
+
+    alist = [[] for _ in range(len(X_vars))]
+    measures_bootstrap = np.empty(len(X_vars), object)
+    measures_bootstrap[:] = alist
+    n_iter_boot = 1000
+    for it in range(n_iter_boot):
+        # np.random.shuffle(y_rand)
+        samples = np.random.choice(len(y), size=len(y), replace=True)
+        # grab 80% of the data at random
+        X_boot = X.iloc[samples, :]
+        Y_boot = y[samples]
+        # splitting the data
+        # x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        # create an object of LinearRegression class
+        LR = LinearRegression()
+        # fit training data
+        LR.fit(X_boot, Y_boot)
+        # predict on test data
+        y_prediction = LR.predict(X_boot)
+        # predict the accuracy score (r2)
+        score = r2_score(Y_boot, y_prediction)
+        # get model coefficients
+        boot_coefficients = LR.coef_ * X_boot.std(axis=0)
+        # measures_bootstrap[it] = boot_coefficients
+        # save null values
+        for ii, var in enumerate(X_vars):
+            if len(X_vars) == 1:
+                measures_bootstrap[ii].append(boot_coefficients)
+            else:
+                measures_bootstrap[ii].append(eval("boot_coefficients." + var))
+
+    # save bootstrap as panda
+    bootstrap_panda = pd.DataFrame()
+    for ii, var in enumerate(X_vars):
+        bootstrap_panda[X_vars[ii]] = measures_bootstrap[ii]
+
+    bootstrap_panda = bootstrap_panda[bootstrap_panda[:] < 1]
+    bootstrap_panda = bootstrap_panda[bootstrap_panda[:] > -1]
+    bootstrap_panda = bootstrap_panda.dropna(how='all')
+
+    # generate confidence intervals
+    upper_vals = np.percentile(bootstrap_panda, upper, axis=0)
+    lower_vals = np.percentile(bootstrap_panda, lower, axis=0)
+    interval = np.percentile(bootstrap_panda, upper, axis=0) - np.mean(bootstrap_panda, axis=0)
+    return interval, upper_vals, lower_vals
+
+def ridge_regression(dataset, X_vars,y_vars):
+    X = dataset[X_vars].astype(float)
+    y = dataset[y_vars].to_numpy()
+
+    # reshape if single feature
+    if len(X_vars) == 1:
+        X = X.to_numpy()
+        X = X.reshape(-1, 1)
+
+    clf = Ridge(alpha=1.0)
+    clf.fit(X, y)
+    y_prediction = clf.predict(X)
+    score = r2_score(y, y_prediction)
+    coefficients = clf.coef_ * X.std(axis=0)
+    return score, coefficients

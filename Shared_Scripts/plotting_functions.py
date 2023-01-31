@@ -2,8 +2,15 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 from Shared_Scripts import stat_funcs
+from sklearn.linear_model import Ridge
+from sklearn.metrics import r2_score
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 #Helper function for plot annotation
+from Shared_Scripts.stat_funcs import bootstrap_ci, permtest_coeffs, ridge_regression
+
+
 def annotate(ax, data, x, y, type='pearson'):
     # slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x=data[x], y=data[y])
     if(type=='pearson'):
@@ -82,3 +89,34 @@ def correlation (dataset, x,y="rate shifted - rate swapped (NN)",diatonic="inclu
     sns.regplot(x=x, y=y, data=temp, ax=ax)
     annotate(ax,x=x, y=y, data=temp, type=type)
     plt.show()
+
+
+
+def ridge_coeffs(dataset, X_vars,y_vars,diatonic="include"):
+
+    dataset = dataset.groupby("set").mean().reset_index()  # collapsing subject by set
+
+    if (diatonic == "exclude"): dataset = dataset[dataset['subset_of_diatonic'] == False]
+    elif (diatonic == "only"):
+        dataset = dataset[dataset['subset_of_diatonic'] == True]
+
+    score, coefficients = ridge_regression(dataset=dataset, X_vars=X_vars, y_vars=y_vars)
+    ci_interval, ci_upper, ci_lower = bootstrap_ci(dataset=dataset, X_vars=X_vars, y_vars=y_vars)
+    coefs = permtest_coeffs(X_vars=X_vars, y_vars=y_vars, coefficients=coefficients, dataset=dataset)
+
+    fig1, ax = plt.subplots(figsize=(8, 6))
+    sns.set(font="Arial")
+    sns.set_theme(style="white")
+    sns.despine()
+    ax = sns.barplot(x="vars", y="Coefficient importance", data=coefs, palette=["#b2abd2", "#b2abd2", "#b2abd2"])
+    ax.errorbar(range(len(X_vars)), coefs["Coefficient importance"],
+                yerr=ci_interval,
+                fmt='.', mfc='black', mec='black', ms=0, color='k', linewidth=2)
+    ax.set_yticklabels(np.round(ax.get_yticks(), 3), size=13)
+    sns.despine()
+    ax.axhline(0, color='k', linewidth=.8)
+    plt.xlabel("Scale Intervals", fontsize=13)
+    plt.ylabel("Beta Coefficient", fontsize=13)
+    # add 95% confidence intervals from bootstrap procedure
+    plt.show()
+

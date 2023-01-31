@@ -94,6 +94,7 @@ def permtest_coeffs(X_vars,y_vars,coefficients,dataset, n_iter = 10000, plot=Fal
     measures_null[:] = alist
     y_rand = y
     for it in range(n_iter):
+        print('\r{} of {}'.format(it, n_iter), end='')
         np.random.shuffle(y_rand)
         # splitting the data
         # x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -468,13 +469,13 @@ def perm_bias_unpaired_unpack(args):
 
 
 def bootstrap_ci(X_vars, y_vars, dataset, upper=97.5, lower=2.5):
+
+    if len(X_vars) == 1:
+        print("Skipping")
+        return None, None, None
+
     X = dataset[X_vars].astype(float)
     y = dataset[y_vars].to_numpy()
-
-    # reshape if single feature
-    if len(X_vars) == 1:
-        X = X.to_numpy()
-        X = X.reshape(-1, 1)
 
     alist = [[] for _ in range(len(X_vars))]
     measures_bootstrap = np.empty(len(X_vars), object)

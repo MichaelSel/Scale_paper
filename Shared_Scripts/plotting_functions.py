@@ -11,12 +11,12 @@ from sklearn.linear_model import LinearRegression
 from Shared_Scripts.stat_funcs import bootstrap_ci, permtest_coeffs, ridge_regression
 
 
-def annotate(ax, data, x, y, type='pearson'):
+def annotate(ax, data, x, y, type='pearson', itirations = 10000):
     # slope, intercept, rvalue, pvalue, stderr = scipy.stats.linregress(x=data[x], y=data[y])
     if(type=='pearson'):
-        r,p = stat_funcs.permtest_corr_pearson(data[x],data[y],10000,False)
+        r,p = stat_funcs.permtest_corr_pearson(data[x],data[y],itirations,False)
     elif(type=='spearman'):
-        r, p = stat_funcs.permtest_corr(data[x], data[y], 10000)
+        r, p = stat_funcs.permtest_corr(data[x], data[y], itirations)
     ax.text(.02, .9, f'r2={r ** 2:.2f}, p={p:.2g}', transform=ax.transAxes)
 
 def bin_by_feature_bars (dataset,x,y="rate shifted - rate swapped (NN)", bins=3,diatonic="include",normalize=True,figsize=(6,6),ylim=None, show_data_points=True):
@@ -71,7 +71,7 @@ def bin_by_feature_correlation (dataset, x,y="rate shifted - rate swapped (NN)",
     annotate(ax,x=x, y=y, data=temp)
     plt.show()
 
-def correlation (dataset, x,y="rate shifted - rate swapped (NN)",diatonic="include", normalize=True, figsize=(6,6), type='pearson'):
+def correlation (dataset, x,y="rate shifted - rate swapped (NN)",diatonic="include", normalize=True, figsize=(6,6), type='pearson', itirations = 10000):
     temp = dataset #loading dataset
     temp = temp.groupby("set").mean().reset_index() #collapsing subject by set
     if(diatonic=="exclude"): temp = temp[temp['subset_of_diatonic']==False]
@@ -87,8 +87,8 @@ def correlation (dataset, x,y="rate shifted - rate swapped (NN)",diatonic="inclu
     #plot the data
 
     sns.regplot(x=x, y=y, data=temp, ax=ax)
-    annotate(ax,x=x, y=y, data=temp, type=type)
-    plt.show()
+    annotate(ax,x=x, y=y, data=temp, type=type,itirations=itirations)
+    # plt.show()
 
 
 
@@ -100,23 +100,34 @@ def ridge_coeffs(dataset, X_vars,y_vars,diatonic="include"):
     elif (diatonic == "only"):
         dataset = dataset[dataset['subset_of_diatonic'] == True]
 
-    score, coefficients = ridge_regression(dataset=dataset, X_vars=X_vars, y_vars=y_vars)
-    ci_interval, ci_upper, ci_lower = bootstrap_ci(dataset=dataset, X_vars=X_vars, y_vars=y_vars)
-    coefs = permtest_coeffs(X_vars=X_vars, y_vars=y_vars, coefficients=coefficients, dataset=dataset)
 
+    score, coefficients = ridge_regression(dataset=dataset, X_vars=X_vars, y_vars=y_vars)
+    print("****Ridge regression:***")
+    print("Score: {}\n coeffs: \n{}".format(score, coefficients))
+
+    print("\nComputing confidence intervals.")
+    print(X_vars)
+    ci_interval, ci_upper, ci_lower = bootstrap_ci(dataset=dataset, X_vars=X_vars, y_vars=y_vars)
+    print("DONE.")
+
+    print("\nRunning Permutation Tests.")
+    coefs = permtest_coeffs(X_vars=X_vars, y_vars=y_vars, coefficients=coefficients, dataset=dataset)
+    print("DONE.")
+
+    print("\nPlotting:")
     fig1, ax = plt.subplots(figsize=(8, 6))
     sns.set(font="Arial")
     sns.set_theme(style="white")
     sns.despine()
     ax = sns.barplot(x="vars", y="Coefficient importance", data=coefs, palette=["#b2abd2", "#b2abd2", "#b2abd2"])
-    ax.errorbar(range(len(X_vars)), coefs["Coefficient importance"],
-                yerr=ci_interval,
-                fmt='.', mfc='black', mec='black', ms=0, color='k', linewidth=2)
+    if(ci_interval is not None):
+        ax.errorbar(range(len(X_vars)), coefs["Coefficient importance"],
+                    yerr=ci_interval,
+                    fmt='.', mfc='black', mec='black', ms=0, color='k', linewidth=2)
     ax.set_yticklabels(np.round(ax.get_yticks(), 3), size=13)
     sns.despine()
     ax.axhline(0, color='k', linewidth=.8)
-    plt.xlabel("Scale Intervals", fontsize=13)
+    plt.xlabel("Features", fontsize=13)
     plt.ylabel("Beta Coefficient", fontsize=13)
     # add 95% confidence intervals from bootstrap procedure
-    plt.show()
-
+    # plt.show()

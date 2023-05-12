@@ -85,6 +85,7 @@ def correlation (dataset, x,y="rate shifted - rate swapped (NN)",diatonic="inclu
     fig, ax = plt.subplots(figsize=figsize)
 
     #plot the data
+    fig.set_size_inches(8, 6)
 
     sns.regplot(x=x, y=y, data=temp, ax=ax)
     annotate(ax,x=x, y=y, data=temp, type=type,itirations=itirations)
@@ -131,3 +132,12 @@ def ridge_coeffs(dataset, X_vars,y_vars,diatonic="include"):
     plt.ylabel("Beta Coefficient", fontsize=13)
     # add 95% confidence intervals from bootstrap procedure
     # plt.show()
+
+
+
+
+
+
+
+
+
